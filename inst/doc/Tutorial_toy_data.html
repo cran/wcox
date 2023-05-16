@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Tutorial Inverse probability weights to correct for ascertainment bias using R package ‘wcox’</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Tutorial Inverse probability weights to
+correct for ascertainment bias using R package ‘wcox’</h1>
+
+
+
+<p>This tutorial shows a step-by-step analysis of toy data:</p>
+<ul>
+<li><a href="#anchor1">Step 1: Load of R package ‘wcox’ and toy
+data.</a></li>
+<li><a href="#anchor2">Step 2: Acquire population incidence rate in the
+correct format.</a></li>
+<li><a href="#anchor3">Step 3: Prepare the sample data using
+Prepare_data().</a></li>
+<li><a href="#anchor4">Step 4: Calculate weights using
+Calculate_weights().</a></li>
+<li><a href="#anchor5">Step 5: Fit a weighted Cox model using R package
+‘survival’.</a></li>
+</ul>
+<p>Let’s start!</p>
+<div id="step-1-load-r-package-wcox-and-toy-data." class="section level2">
+<h2>Step 1: Load R package <em>‘wcox’</em> and toy data.</h2>
+<p>Load the package.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">library</span>(wcox)</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="fu">require</span>(dplyr)</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="fu">require</span>(tidyr)</span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="fu">require</span>(survival)</span></code></pre></div>
+<p>Load the toy data set.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="co"># Load toy data.</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="fu">data</span>(<span class="st">&quot;fam_dat&quot;</span>)</span></code></pre></div>
+<p>Note that this concerns a simulated data set and no real
+observations. However, it is similar in structure to what one might come
+across in for example familial cancer studies.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="co"># Show the first few lines of the toy data.</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="fu">head</span>(fam_dat)</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="co">#&gt;    family_id           x event_indicator age individual_id</span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co">#&gt; 8          1  0.33093247               1  38             1</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a><span class="co">#&gt; 9          1  0.18551392               1  67             2</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a><span class="co">#&gt; 10         1 -1.65904097               0 100             3</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a><span class="co">#&gt; 11         1 -0.38816903               1  14             4</span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="co">#&gt; 12         1  0.03958956               1   2             5</span></span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="co">#&gt; 18         2  1.05115476               1   9             6</span></span></code></pre></div>
+<p>Families share the same ‘family_id’; ‘individual_id’ is unique per
+individual. Risk modifier ‘x’ is a continuous variable. The event
+indicator (‘event_indicator’) takes value 1 if the individual
+experienced the event during follow-up and 0 otherwise. We consider the
+follow-up time since birth, i.e. age. For individuals experiencing the
+event, ‘age’ is the time-to-event. For others, this is the
+time-to-censoring.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="co"># Show the number of families and top rows.</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="fu">cat</span>( <span class="st">&quot;There are&quot;</span>, <span class="fu">unique</span>(fam_dat<span class="sc">$</span>family_id) <span class="sc">%&gt;%</span> <span class="fu">length</span>() , <span class="st">&quot;families in data set. &quot;</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="co">#&gt; There are 219 families in data set.</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="co"># Examine family sizes.</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>fam_sizes <span class="ot">&lt;-</span> fam_dat <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(family_id) <span class="sc">%&gt;%</span> <span class="fu">count</span>()</span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a></span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="fu">cat</span>( <span class="st">&quot;Family size is on average &quot;</span>, </span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>     fam_sizes<span class="sc">$</span>n <span class="sc">%&gt;%</span> <span class="fu">mean</span>() <span class="sc">%&gt;%</span> <span class="fu">round</span>(<span class="dv">1</span>), </span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>     <span class="st">&quot; and ranges from &quot;</span>, </span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a>     fam_sizes<span class="sc">$</span>n <span class="sc">%&gt;%</span> <span class="fu">min</span>(), <span class="st">&quot; to &quot;</span>, </span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a>     fam_sizes<span class="sc">$</span>n <span class="sc">%&gt;%</span> <span class="fu">max</span>(), <span class="st">&quot;.&quot;</span>, <span class="at">sep =</span> <span class="st">&quot;&quot;</span>)</span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a><span class="co">#&gt; Family size is on average 4.9 and ranges from 2 to 7.</span></span></code></pre></div>
+<p>It is good practice to report the distribution of family size
+together with the analysis results.</p>
+<p>Besides sample data, we need some information about the population in
+order to calculate weights that correct for ascertainment bias.</p>
+</div>
+<div id="anchor2" class="section level2">
+<h2>Step 2: Acquire population incidence rate in the correct
+format.</h2>
+<p>In the weight calculation <em>‘wcox’</em> uses the difference between
+the incidence rate of the event of interest in the sample versus the
+population. Therefore, the incidence rate in the population at risk is
+needed.</p>
+<blockquote>
+<p><strong>Incidence rate</strong> is the number of events in a certain
+time window divided by the population.</p>
+</blockquote>
+<p>Think of sentences like <em>“Breast cancer occurs in <incidence rate>
+out of 100 000 women between age xx and xx.”</em> For many (medical)
+events, such data is available in national registries, for example the
+Dutch cancer registry (<a href="https://iknl.nl/nkr/cijfers-op-maat" class="uri">https://iknl.nl/nkr/cijfers-op-maat</a>, select crude rate
+for incidence to get per 100 000). For high-risk populations of carriers
+of certain pathogenic genetic variants, incidence rates are often
+available in scientific publications or can be inferred based on
+published hazard ratios multiplied by underlying general
+population-based incidence rates.</p>
+<p>Two aspects are important here. We need the incidence rate per 100
+000 individuals, as that is what the package expects. And we need to
+make a choice of age groups. <em>‘wcox’</em> allows to select the
+standard 5-years or 10-years age groups or define age groups
+manually.</p>
+<p>The population incidence needs to be a so called vector, a sequence
+of incidence rates per age group. For entering the age group cut-offs:
+<em>1)</em> We can specify them manually where the vector ‘breaks’ needs
+to be one item longer than the incidence rate vector because the end of
+the last age group is also included. Intervals are of the form [begin,
+end), which means that in our example below, we will only include those
+with a follow-up time smaller than 100. <em>2)</em> We can choose
+5-years categories (0-4, 5-9, 10-4 et cetera) or 10-years categories
+(0-9, 10-19, 20-29 et cetera). Then, ‘wcox’ will define the cut-offs
+automatically.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="co"># Enter the incidence by age group per 100 000, starting with the youngest age group.</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>incidence_rate <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">2882</span>, <span class="dv">1766</span>, <span class="dv">1367</span>, <span class="dv">1155</span>, <span class="dv">987</span>, <span class="dv">845</span>, <span class="dv">775</span>, <span class="dv">798</span>, <span class="dv">636</span>, <span class="dv">650</span>)</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co"># Define the age group cutoffs.</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>breaks_manually <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">10</span>, <span class="dv">20</span>, <span class="dv">30</span>, <span class="dv">40</span>, <span class="dv">50</span>, <span class="dv">60</span>, <span class="dv">70</span>, <span class="dv">80</span>, <span class="dv">90</span>, <span class="dv">100</span>)</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>breaks_10yrs <span class="ot">&lt;-</span> <span class="st">&quot;10 years&quot;</span></span></code></pre></div>
+<p>We are almost ready to calculate.</p>
+</div>
+<div id="anchor3" class="section level2">
+<h2>Step 3: Prepare the sample data using <em>Prepare_data()</em>.</h2>
+<p>The function <em>Prepare_data()</em> expects a data.frame() in which
+each row concerns one individual (wide format). Moreover, it looks for
+the individual identifier, event indicator and time-to-event/censoring
+(age) by searching for variables ‘id’, ‘d’, ‘y’, respectively. In our
+case the latter two variables are named differently and we have to
+rename them.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="co"># Rename variables.</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>my_dat <span class="ot">&lt;-</span> <span class="fu">rename</span>(fam_dat, <span class="at">id =</span> individual_id, <span class="at">d =</span> event_indicator, <span class="at">y =</span> age)</span></code></pre></div>
+<p>Now, it’s time to combine the three pieces (sample data, external
+data, choice of age categories) to prepare the data for weight
+calculation. Remember that the calculation is based on the comparison
+between the sample data and the population and therefore we need to have
+the population incidence.</p>
+<p>The function <em>Prepare_data()</em> takes three arguments: dat
+inputs the sample data.frame with ‘id’, ‘d’, ‘y’ and a family
+identifier, population_incidence inputs the vector (i.e. sequence of
+form c(xxx, xxx, xxx, …) ) with incidence rates per 100 000, breaks
+inputs either a vector with breaks or one of the pre-set options (“5
+years” or “10 years”). The code below uses the manual breaks. To try-out
+the pre-set option for 10 years age groups, remove the “#” in front of
+the last lines.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="co"># Using option 1 (manual cut-offs):</span></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>my_dat_out <span class="ot">&lt;-</span> <span class="fu">Prepare_data</span>(<span class="at">dat =</span> my_dat, <span class="at">population_incidence =</span> incidence_rate, </span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>                           <span class="at">breaks =</span> breaks_manually)</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co"># Unhash to use option 2 (pre-set cut-offs):</span></span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co"># my_dat_out &lt;- Prepare_data(dat = my_dat, population_incidence = incidence_rate, </span></span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co"># breaks = &quot;10 years&quot;)</span></span></code></pre></div>
+<p>Let’s see what the prepared data looks like.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="co"># Select the newly add columns.</span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>my_dat_out <span class="sc">%&gt;%</span> <span class="fu">select</span>(id, k, d, S_k, S_k.) <span class="sc">%&gt;%</span> <span class="fu">arrange</span>(id) <span class="sc">%&gt;%</span> <span class="fu">head</span>(<span class="dv">8</span>)</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="co">#&gt;   id        k d       S_k      S_k.</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="co">#&gt; 1  1  (30,40] 1 0.8909206 0.9182261</span></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="co">#&gt; 2  2  (60,70] 1 0.9254270 0.9634811</span></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="co">#&gt; 3  3 (90,100] 0 0.9370675 0.9924243</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="co">#&gt; 4  4  (10,20] 1 0.8381150 0.8331193</span></span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="co">#&gt; 5  5   (0,10] 1 0.7496117 0.6760318</span></span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a><span class="co">#&gt; 6  6   (0,10] 1 0.7496117 0.6760318</span></span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a><span class="co">#&gt; 7  7   (0,10] 1 0.7496117 0.6760318</span></span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a><span class="co">#&gt; 8  8   (0,10] 0 0.7496117 0.6760318</span></span></code></pre></div>
+<p>The weights will be calculated based on the newly add columns S_k and
+S_k. .</p>
+<p>In the paper, sample based quantities have a hyperscript ‘0’ which is
+replaced by a dot (.) here. S_k is based on the external information
+(incidence rate).</p>
+<p>With the prepared data set, we are ready to calculate the
+weights!</p>
+</div>
+<div id="anchor4" class="section level2">
+<h2>Step 4: Calculate weights using <em>Calculate_weights()</em>.</h2>
+<p>Function <em>Calculate_weights()</em> requires the data set prepared
+in the previous step, which we will refer to as
+<strong>prepared</strong> data. N.B.: Using the original data set
+directly will fail as the external information is not integrated
+there.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="co"># Calculate weights using the object that is output from the Prepare_data() function.</span></span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>w <span class="ot">&lt;-</span> <span class="fu">Calculate_weights</span>(<span class="at">dat =</span> my_dat_out)</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co">#&gt; [1] &quot;No negative weights&quot;</span></span></code></pre></div>
+<p>The function indicates that there are no negative weights. This means
+that our weights are valid. We will have a look at them now.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="co"># Show the weights.</span></span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>my_dat_out <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">weight =</span> w) <span class="sc">%&gt;%</span> </span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>  <span class="fu">select</span>(id, d, weight) <span class="sc">%&gt;%</span> </span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>  <span class="fu">arrange</span>(id) <span class="sc">%&gt;%</span> </span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>  <span class="fu">filter</span>(id <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">3</span>))</span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="co">#&gt;   id d   weight</span></span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a><span class="co">#&gt; 1  1 1 1.374799</span></span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="co">#&gt; 2  3 0 1.000000</span></span></code></pre></div>
+<p>Individual 1 (id = 1) experiences the event between age 30 and 39 (d
+= 1). The weight for the interval in which the event took place is 1,
+while other intervals get weighted by less than 1. Individual 3 never
+experiences the event during follow-up and is censored within interval
+90-99 years.</p>
+</div>
+<div id="anchor5" class="section level2">
+<h2>Step 5: Fit a weighted Cox model using R package
+<em>‘survival’</em>.</h2>
+<p>Now, we show how to fit a Cox proportional hazards model with our
+calculated weights to correct for ascertainment bias, using R package
+‘survival’. Weights can be included using the argument ‘weights’. Note
+that because we inputted the exact same data.frame in the function
+<em>Calculate_weights()</em> in the previous step, i.e. the
+<strong>prepared</strong> data, the resulting weight vector can be
+directly used: the order of individuals is the same. The covariate of
+interest is risk modifier ‘x’. In order to obtain robust standard
+errors, the cluster term needs to be included.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="co"># Fit the model.</span></span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>fit <span class="ot">&lt;-</span> <span class="fu">coxph</span>(<span class="fu">Surv</span>(y, d<span class="sc">==</span><span class="dv">1</span>) <span class="sc">~</span> x <span class="sc">+</span> <span class="fu">cluster</span>(family_id), <span class="at">weights =</span> w, <span class="at">data =</span>  my_dat_out)</span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>fit</span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a><span class="co">#&gt; Call:</span></span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a><span class="co">#&gt; coxph(formula = Surv(y, d == 1) ~ x, data = my_dat_out, weights = w, </span></span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a><span class="co">#&gt;     cluster = family_id)</span></span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a><span class="co">#&gt;      coef exp(coef) se(coef) robust se    z      p</span></span>
+<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a><span class="co">#&gt; x 1.39863   4.04963  0.06048   0.06789 20.6 &lt;2e-16</span></span>
+<span id="cb11-11"><a href="#cb11-11" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb11-12"><a href="#cb11-12" tabindex="-1"></a><span class="co">#&gt; Likelihood ratio test=600.2  on 1 df, p=&lt; 2.2e-16</span></span>
+<span id="cb11-13"><a href="#cb11-13" tabindex="-1"></a><span class="co">#&gt; n= 1069, number of events= 631</span></span></code></pre></div>
+<p>What does this say about the effect of the risk modifier?</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="co"># Extract estimates.</span></span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>fit.summary <span class="ot">&lt;-</span> <span class="fu">summary</span>(fit)</span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a></span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a><span class="co"># Summarize findings.</span></span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Covariate effect (95% CI): &quot;</span>,</span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a><span class="fu">exp</span>(fit.summary<span class="sc">$</span>coefficients[<span class="dv">1</span>]), <span class="st">&quot; (&quot;</span>,</span>
+<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a><span class="fu">exp</span>(fit.summary<span class="sc">$</span>coefficients[<span class="dv">1</span>] <span class="sc">-</span> <span class="fl">1.96</span><span class="sc">*</span>fit.summary<span class="sc">$</span>coefficients[<span class="dv">4</span>]), <span class="st">&quot;, &quot;</span>,</span>
+<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a><span class="fu">exp</span>(fit.summary<span class="sc">$</span>coefficients[<span class="dv">1</span>] <span class="sc">+</span> <span class="fl">1.96</span><span class="sc">*</span>fit.summary<span class="sc">$</span>coefficients[<span class="dv">4</span>]), <span class="st">&quot;).&quot;</span>, <span class="at">sep =</span> <span class="st">&quot;&quot;</span>)</span>
+<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a><span class="co">#&gt; Covariate effect (95% CI): 4.049629 (3.545061, 4.626013).</span></span></code></pre></div>
+<p>The risk of experiencing the event in the next instant of time is
+estimated to be 3.6 times higher for a unit increase in the risk
+modifier. The corresponding 95% confidence interval does not include 1,
+so this positive association is significant (using alpha = 0.05).</p>
+</div>
+<div id="references" class="section level2">
+<h2>References</h2>
+<p>Citation paper.</p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

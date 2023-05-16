@@ -1,0 +1,15 @@
+f5faaf73788aa57bb0d99f981f618515 *DESCRIPTION
+a9ddae624c6e3456a8a65ed7722e9b44 *NAMESPACE
+052b2e546d14207b7fae9baeca24cb97 *R/Calculate_weights.R
+be419da9fac0e022bab4143aeb0d2a2c *R/Prepare_data.R
+9a317a5f3d5460fe1280c3cbcfffda25 *R/fam_dat.R
+1e0c757fbc44106fb17e477c00786e2a *R/globals.R
+c95f8fabf8c0fe242b4b88ae15868dc7 *build/vignette.rds
+990a8f06d0c18a1117e5aee7e386fc11 *data/fam_dat.RData
+66eaee3f20de89943e1b1b32abb4f656 *inst/doc/Tutorial_toy_data.R
+306197ac6d9e6f319bf95d86339dc0eb *inst/doc/Tutorial_toy_data.Rmd
+39cd459f9b61cbe37d72f119365527bf *inst/doc/Tutorial_toy_data.html
+fc911241c530e5338865ebe46cf5f7b2 *man/Calculate_weights.Rd
+f363bdb2f98319c27dea1b95e7f8ebdc *man/Prepare_data.Rd
+caac8a998d90778b3bb099e6ec23148f *man/fam_dat.Rd
+306197ac6d9e6f319bf95d86339dc0eb *vignettes/Tutorial_toy_data.Rmd
